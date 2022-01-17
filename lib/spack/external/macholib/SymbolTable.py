@@ -43,7 +43,7 @@ class SymbolTable(object):
         else:
             cls = nlist
 
-        for i in range(cmd.nsyms):
+        for _ in range(cmd.nsyms):
             cmd = cls.from_fileobj(fh, _endian_=self.macho_header.endian)
             if cmd.n_un == 0:
                 nlists.append((cmd, ''))
@@ -59,23 +59,20 @@ class SymbolTable(object):
         self.localsyms = nlists[cmd.ilocalsym:cmd.ilocalsym+cmd.nlocalsym]
         self.extdefsyms = nlists[cmd.iextdefsym:cmd.iextdefsym+cmd.nextdefsym]
         self.undefsyms = nlists[cmd.iundefsym:cmd.iundefsym+cmd.nundefsym]
-        if cmd.tocoff == 0:
-            self.toc = None
-        else:
-            self.toc = self.readtoc(fh, cmd.tocoff, cmd.ntoc)
+        self.toc = None if cmd.tocoff == 0 else self.readtoc(fh, cmd.tocoff, cmd.ntoc)
 
     def readtoc(self, fh, off, n):
         fh.seek(self.macho_header.offset + off)
-        return [dylib_table_of_contents.from_fileobj(fh) for i in range(n)]
+        return [dylib_table_of_contents.from_fileobj(fh) for _ in range(n)]
 
     def readmodtab(self, fh, off, n):
         fh.seek(self.macho_header.offset + off)
-        return [dylib_module.from_fileobj(fh) for i in range(n)]
+        return [dylib_module.from_fileobj(fh) for _ in range(n)]
 
     def readsym(self, fh, off, n):
         fh.seek(self.macho_header.offset + off)
         refs = []
-        for i in range(n):
+        for _ in range(n):
             ref = dylib_reference.from_fileobj(fh)
             isym, flags = divmod(ref.isym_flags, 256)
             refs.append((self.nlists[isym], flags))
@@ -83,4 +80,4 @@ class SymbolTable(object):
 
     def readrel(self, fh, off, n):
         fh.seek(self.macho_header.offset + off)
-        return [relocation_info.from_fileobj(fh) for i in range(n)]
+        return [relocation_info.from_fileobj(fh) for _ in range(n)]

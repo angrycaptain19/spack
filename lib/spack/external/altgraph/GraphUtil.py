@@ -18,11 +18,7 @@ def generate_random_graph(
     g = Graph.Graph()
 
     if not multi_edges:
-        if self_loops:
-            max_edges = node_num * node_num
-        else:
-            max_edges = node_num * (node_num-1)
-
+        max_edges = node_num * node_num if self_loops else node_num * (node_num-1)
         if edge_num > max_edges:
             raise GraphError(
                 "inconsistent arguments to 'generate_random_graph'")

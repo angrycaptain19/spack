@@ -52,8 +52,7 @@ def pytest_configure(config):
 class LsofFdLeakChecker(object):
     def get_open_files(self):
         out = self._exec_lsof()
-        open_files = self._parse_lsof_output(out)
-        return open_files
+        return self._parse_lsof_output(out)
 
     def _exec_lsof(self):
         pid = os.getpid()
@@ -95,16 +94,18 @@ class LsofFdLeakChecker(object):
             gc.collect()
         lines2 = self.get_open_files()
 
-        new_fds = set([t[0] for t in lines2]) - set([t[0] for t in lines1])
+        new_fds = {t[0] for t in lines2} - {t[0] for t in lines1}
         leaked_files = [t for t in lines2 if t[0] in new_fds]
         if leaked_files:
-            error = []
-            error.append("***** %s FD leakage detected" % len(leaked_files))
-            error.extend([str(f) for f in leaked_files])
-            error.append("*** Before:")
-            error.extend([str(f) for f in lines1])
-            error.append("*** After:")
-            error.extend([str(f) for f in lines2])
+            error = [
+                "***** %s FD leakage detected" % len(leaked_files),
+                *[str(f) for f in leaked_files],
+                '*** Before:',
+                *[str(f) for f in lines1],
+                '*** After:',
+                *[str(f) for f in lines2],
+            ]
+
             error.append(error[0])
             error.append("*** function %s:%s: %s " % item.location)
             error.append("See issue #2366")
@@ -253,8 +254,11 @@ class HookRecorder:
             if call._name == name:
                 del self.calls[i]
                 return call
-        lines = ["could not find call %r, in:" % (name,)]
-        lines.extend(["  %s" % str(x) for x in self.calls])
+        lines = [
+            "could not find call %r, in:" % (name,),
+            *["  %s" % str(x) for x in self.calls],
+        ]
+
         pytest.fail("\n".join(lines))
 
     def getcall(self, name):
@@ -375,10 +379,7 @@ class RunResult:
             if 'seconds' in line:
                 outcomes = rex_outcome.findall(line)
                 if outcomes:
-                    d = {}
-                    for num, cat in outcomes:
-                        d[cat] = int(num)
-                    return d
+                    return {cat: int(num) for num, cat in outcomes}
         raise ValueError("Pytest terminal report not found")
 
     def assert_outcomes(self, passed=0, skipped=0, failed=0, error=0):
@@ -755,18 +756,17 @@ class Testdir:
         capture = MultiCapture(Capture=SysCapture)
         capture.start_capturing()
         try:
-            try:
-                reprec = self.inline_run(*args, **kwargs)
-            except SystemExit as e:
+            reprec = self.inline_run(*args, **kwargs)
+        except SystemExit as e:
 
-                class reprec:
-                    ret = e.args[0]
+            class reprec:
+                ret = e.args[0]
 
-            except Exception:
-                traceback.print_exc()
+        except Exception:
+            traceback.print_exc()
 
-                class reprec:
-                    ret = 3
+            class reprec:
+                ret = 3
         finally:
             out, err = capture.readouterr()
             capture.stop_capturing()
@@ -885,9 +885,7 @@ class Testdir:
         if withinit:
             self.makepyfile(__init__="#")
         self.config = config = self.parseconfigure(path, *configargs)
-        node = self.getnode(config, path)
-
-        return node
+        return self.getnode(config, path)
 
     def collect_by_name(self, modcol, name):
         """Return the collection node for name from the module collection.

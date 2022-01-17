@@ -124,9 +124,7 @@ class EncodedFile(object):
     def write(self, obj):
         if isinstance(obj, unicode):
             obj = obj.encode(self.encoding)
-        elif isinstance(obj, str):
-            pass
-        else:
+        elif not isinstance(obj, str):
             obj = str(obj)
         self._stream.write(obj)
 
@@ -258,14 +256,8 @@ class StdCaptureFD(Capture):
 
     def readouterr(self):
         """ return snapshot value of stdout/stderr capturings. """
-        if hasattr(self, "out"):
-            out = self._readsnapshot(self.out.tmpfile)
-        else:
-            out = ""
-        if hasattr(self, "err"):
-            err = self._readsnapshot(self.err.tmpfile)
-        else:
-            err = ""
+        out = self._readsnapshot(self.out.tmpfile) if hasattr(self, "out") else ""
+        err = self._readsnapshot(self.err.tmpfile) if hasattr(self, "err") else ""
         return [out, err]
 
     def _readsnapshot(self, f):
@@ -365,7 +357,4 @@ class DontReadFromInput:
 try:
     devnullpath = os.devnull
 except AttributeError:
-    if os.name == 'nt':
-        devnullpath = 'NUL'
-    else:
-        devnullpath = '/dev/null'
+    devnullpath = 'NUL' if os.name == 'nt' else '/dev/null'

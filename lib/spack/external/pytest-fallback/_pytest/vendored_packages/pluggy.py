@@ -273,11 +273,10 @@ class _CallOutcome:
     def get_result(self):
         if self.excinfo is None:
             return self.result
-        else:
-            ex = self.excinfo
-            if _py3:
-                raise ex[1].with_traceback(ex[2])
-            _reraise(*ex)  # noqa
+        ex = self.excinfo
+        if _py3:
+            raise ex[1].with_traceback(ex[2])
+        _reraise(*ex)  # noqa
 
 if not _py3:
     exec("""
@@ -701,11 +700,7 @@ class _HookCaller(object):
                 raise ValueError("plugin %r not found" % (plugin,))
 
     def _add_hookimpl(self, hookimpl):
-        if hookimpl.hookwrapper:
-            methods = self._wrappers
-        else:
-            methods = self._nonwrappers
-
+        methods = self._wrappers if hookimpl.hookwrapper else self._nonwrappers
         if hookimpl.trylast:
             methods.insert(0, hookimpl)
         elif hookimpl.tryfirst:

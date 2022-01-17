@@ -61,10 +61,7 @@ class View(object):
         return self.__obj__.__class__
 
     def __matchkey__(self, key, subclasses):
-        if inspect.isclass(key):
-            keys = inspect.getmro(key)
-        else:
-            keys = [key]
+        keys = inspect.getmro(key) if inspect.isclass(key) else [key]
         for key in keys:
             result = [C for C in subclasses if key in C.__view__]
             if result:
@@ -91,8 +88,7 @@ class View(object):
 
 def enumsubclasses(cls):
     for subcls in cls.__subclasses__():
-        for subsubclass in enumsubclasses(subcls):
-            yield subsubclass
+        yield from enumsubclasses(subcls)
     yield cls
 
 
@@ -177,10 +173,8 @@ class Compare(Interpretable):
         expr = Interpretable(self.expr)
         expr.eval(frame)
         for operation, expr2 in self.ops:
-            if hasattr(self, 'result'):
-                # shortcutting in chained expressions
-                if not frame.is_true(self.result):
-                    break
+            if hasattr(self, 'result') and not frame.is_true(self.result):
+                break
             expr2 = Interpretable(expr2)
             expr2.eval(frame)
             self.explanation = "%s %s %s" % (
@@ -438,10 +432,7 @@ class Stmt(Interpretable):
 
 def report_failure(e):
     explanation = e.node.nice_explanation()
-    if explanation:
-        explanation = ", in: " + explanation
-    else:
-        explanation = ""
+    explanation = ", in: " + explanation if explanation else ""
     sys.stdout.write("%s: %s%s\n" % (e.exc.__name__, e.value, explanation))
 
 def check(s, frame=None):

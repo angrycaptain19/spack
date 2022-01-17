@@ -300,7 +300,7 @@ class Graph(object):
         """
         Replace the edge data for a specific edge
         """
-        self.edges[edge] = self.edges[edge][0:2] + (edge_data,)
+        self.edges[edge] = self.edges[edge][:2] + (edge_data,)
 
     def head(self, edge):
         """
@@ -413,12 +413,7 @@ class Graph(object):
                     if indeg[tail_id] == 0:
                         queue.append(tail_id)
 
-        if len(topo_list) == len(self.node_list()):
-            valid = True
-        else:
-            # the graph has cycles, invalid topological sort
-            valid = False
-
+        valid = len(topo_list) == len(self.node_list())
         return (valid, topo_list)
 
     def forw_topo_sort(self):
@@ -641,11 +636,7 @@ class Graph(object):
             num += len(nbr_set & sec_set)
 
         nbr_num = len(nbr_set)
-        if nbr_num:
-            clust_coef = float(num) / (nbr_num * (nbr_num - 1))
-        else:
-            clust_coef = 0.0
-        return clust_coef
+        return float(num) / (nbr_num * (nbr_num - 1)) if nbr_num else 0.0
 
     def get_hops(self, start, end=None, forward=True):
         """

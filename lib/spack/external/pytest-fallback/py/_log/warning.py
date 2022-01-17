@@ -45,10 +45,7 @@ def warn(msg, stacklevel=1, function=None):
         else:
             globals = caller.f_globals
             lineno = caller.f_lineno
-        if '__name__' in globals:
-            module = globals['__name__']
-        else:
-            module = "<string>"
+        module = globals['__name__'] if '__name__' in globals else "<string>"
         filename = globals.get('__file__')
     if filename:
         fnl = filename.lower()

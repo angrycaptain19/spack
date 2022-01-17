@@ -154,11 +154,10 @@ class AssertionRewritingHook(object):
             state.trace("rewriting conftest file: %r" % (fn,))
             return True
 
-        if self.session is not None:
-            if self.session.isinitpath(fn):
-                state.trace("matched test file (was specified on cmdline): %r" %
-                            (fn,))
-                return True
+        if self.session is not None and self.session.isinitpath(fn):
+            state.trace("matched test file (was specified on cmdline): %r" %
+                        (fn,))
+            return True
 
         # modules not passed explicitly on the command line are only
         # rewritten if they match the naming convention for test files
@@ -305,19 +304,20 @@ def _rewrite_test(config, fn):
         # gets this right.
         end1 = source.find("\n")
         end2 = source.find("\n", end1 + 1)
-        if (not source.startswith(BOM_UTF8) and
-            cookie_re.match(source[0:end1]) is None and
-                cookie_re.match(source[end1 + 1:end2]) is None):
+        if (
+            not source.startswith(BOM_UTF8)
+            and cookie_re.match(source[:end1]) is None
+            and cookie_re.match(source[end1 + 1 : end2]) is None
+        ):
             if hasattr(state, "_indecode"):
                 # encodings imported us again, so don't rewrite.
                 return None, None
             state._indecode = True
             try:
-                try:
-                    source.decode("ascii")
-                except UnicodeDecodeError:
-                    # Let it fail in real import.
-                    return None, None
+                source.decode("ascii")
+            except UnicodeDecodeError:
+                # Let it fail in real import.
+                return None, None
             finally:
                 del state._indecode
     # On Python versions which are not 2.7 and less than or equal to 3.1, the
@@ -405,10 +405,7 @@ def _saferepr(obj):
 
     """
     repr = py.io.saferepr(obj)
-    if py.builtin._istext(repr):
-        t = py.builtin.text
-    else:
-        t = py.builtin.bytes
+    t = py.builtin.text if py.builtin._istext(repr) else py.builtin.bytes
     return repr.replace(t("\n"), t("\\n"))
 
 
@@ -433,10 +430,7 @@ def _format_assertmsg(obj):
     else:
         s = py.io.saferepr(obj)
         is_repr = True
-    if py.builtin._istext(s):
-        t = py.builtin.text
-    else:
-        t = py.builtin.bytes
+    t = py.builtin.text if py.builtin._istext(s) else py.builtin.bytes
     s = s.replace(t("\n"), t("\n~")).replace(t("%"), t("%%"))
     if is_repr:
         s = s.replace(t("\\n"), t("\n~"))
@@ -449,10 +443,7 @@ def _should_repr_global_name(obj):
 
 def _format_boolop(explanations, is_or):
     explanation = "(" + (is_or and " or " or " and ").join(explanations) + ")"
-    if py.builtin._istext(explanation):
-        t = py.builtin.text
-    else:
-        t = py.builtin.bytes
+    t = py.builtin.text if py.builtin._istext(explanation) else py.builtin.bytes
     return explanation.replace(t('%'), t('%%'))
 
 
@@ -625,7 +616,7 @@ class AssertionRewriter(ast.NodeVisitor):
             for name, field in ast.iter_fields(node):
                 if isinstance(field, list):
                     new = []
-                    for i, child in enumerate(field):
+                    for child in field:
                         if isinstance(child, ast.Assert):
                             # Transform assert.
                             new.extend(self.visit(child))
@@ -920,7 +911,7 @@ class AssertionRewriter(ast.NodeVisitor):
         left_res, left_expl = self.visit(comp.left)
         if isinstance(comp.left, (_ast.Compare, _ast.BoolOp)):
             left_expl = "({0})".format(left_expl)
-        res_variables = [self.variable() for i in range(len(comp.ops))]
+        res_variables = [self.variable() for _ in range(len(comp.ops))]
         load_names = [ast.Name(v, ast.Load()) for v in res_variables]
         store_names = [ast.Name(v, ast.Store()) for v in res_variables]
         it = zip(range(len(comp.ops)), comp.ops, comp.comparators)
@@ -945,8 +936,5 @@ class AssertionRewriter(ast.NodeVisitor):
                                 ast.Tuple(load_names, ast.Load()),
                                 ast.Tuple(expls, ast.Load()),
                                 ast.Tuple(results, ast.Load()))
-        if len(comp.ops) > 1:
-            res = ast.BoolOp(ast.And(), load_names)
-        else:
-            res = load_names[0]
+        res = ast.BoolOp(ast.And(), load_names) if len(comp.ops) > 1 else load_names[0]
         return res, self.explanation_param(self.pop_format_context(expl_call))

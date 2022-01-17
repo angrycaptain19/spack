@@ -10,9 +10,7 @@ if sys.version_info >= (3,0):
     def u(s):
         return s
     def unicode(x, errors=None):
-        if hasattr(x, '__unicode__'):
-            return x.__unicode__()
-        return str(x)
+        return x.__unicode__() if hasattr(x, '__unicode__') else str(x)
 else:
     def u(s):
         return unicode(s)
@@ -185,10 +183,7 @@ class SimpleUnicodeVisitor(object):
             value = getattr(attrs, name)
             if name.endswith('_'):
                 name = name[:-1]
-            if isinstance(value, raw):
-                insert = value.uniobj
-            else:
-                insert = escape(unicode(value))
+            insert = value.uniobj if isinstance(value, raw) else escape(unicode(value))
             return ' %s="%s"' % (name, insert)
 
     def getstyle(self, tag):

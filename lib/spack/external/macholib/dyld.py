@@ -34,9 +34,7 @@ _DEFAULT_LIBRARY_FALLBACK = [
 # XXX: Is this function still needed?
 if sys.version_info[0] == 2:
     def _ensure_utf8(s):
-        if isinstance(s, unicode):  # noqa: F821
-            return s.encode('utf8')
-        return s
+        return s.encode('utf8') if isinstance(s, unicode) else s
 else:
     def _ensure_utf8(s):
         if s is not None and not isinstance(s, str):

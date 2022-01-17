@@ -413,10 +413,7 @@ class SysCapture:
         self._old = getattr(sys, name)
         self.name = name
         if tmpfile is None:
-            if name == "stdin":
-                tmpfile = DontReadFromInput()
-            else:
-                tmpfile = CaptureIO()
+            tmpfile = DontReadFromInput() if name == "stdin" else CaptureIO()
         self.tmpfile = tmpfile
 
     def start(self):

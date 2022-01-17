@@ -193,10 +193,7 @@ class SvnPathBase(common.PathBase):
             else:
                 basename = parts[-1]
                 i = basename.rfind('.')
-                if i == -1:
-                    purebasename, ext = basename, ''
-                else:
-                    purebasename, ext = basename[:i], basename[i:]
+                purebasename, ext = (basename, '') if i == -1 else (basename[:i], basename[i:])
                 if name == 'purebasename':
                     res.append(purebasename)
                 elif name == 'ext':
@@ -207,8 +204,7 @@ class SvnPathBase(common.PathBase):
 
     def __eq__(self, other):
         """ return true if path and rev attributes each match """
-        return (str(self) == str(other) and
-               (self.rev == other.rev or self.rev == other.rev))
+        return str(self) == str(other) and self.rev in [other.rev, other.rev]
 
     def __ne__(self, other):
         return not self == other
@@ -220,20 +216,17 @@ class SvnPathBase(common.PathBase):
         if not args:
             return self
 
-        args = tuple([arg.strip(self.sep) for arg in args])
+        args = tuple(arg.strip(self.sep) for arg in args)
         parts = (self.strpath, ) + args
-        newpath = self.__class__(self.sep.join(parts), self.rev, self.auth)
-        return newpath
+        return self.__class__(self.sep.join(parts), self.rev, self.auth)
 
     def propget(self, name):
         """ return the content of the given property. """
-        value = self._propget(name)
-        return value
+        return self._propget(name)
 
     def proplist(self):
         """ list all property names. """
-        content = self._proplist()
-        return content
+        return self._proplist()
 
     def size(self):
         """ Return the size of the file content of the Path. """
@@ -322,9 +315,7 @@ class PropListDict(dict):
         return value
 
 def fixlocale():
-    if sys.platform != 'win32':
-        return 'LC_ALL=C '
-    return ''
+    return 'LC_ALL=C ' if sys.platform != 'win32' else ''
 
 # some nasty chunk of code to solve path and url conversion and quoting issues
 ILLEGAL_CHARS = '* | \\ / : < > ? \t \n \x0b \x0c \r'.split(' ')
@@ -346,10 +337,8 @@ def _check_path(path):
 def path_to_fspath(path, addat=True):
     _check_path(path)
     sp = path.strpath
-    if addat and path.rev != -1:
-        sp = '%s@%s' % (sp, path.rev)
-    elif addat:
-        sp = '%s@HEAD' % (sp,)
+    if addat:
+        sp = '%s@%s' % (sp, path.rev) if path.rev != -1 else '%s@HEAD' % (sp,)
     return sp
 
 def url_from_path(path):
@@ -452,9 +441,7 @@ class SvnWCCommandPath(common.PathBase):
         return str(self.localpath)
 
     def _makeauthoptions(self):
-        if self.auth is None:
-            return ''
-        return self.auth.makecmdoptions()
+        return '' if self.auth is None else self.auth.makecmdoptions()
 
     def _authsvn(self, cmd, args=None):
         args = args and list(args) or []
@@ -507,11 +494,10 @@ class SvnWCCommandPath(common.PathBase):
             if (py.std.sys.platform != 'win32' and
                     _getsvnversion() == '1.3'):
                 url += "@HEAD"
+        elif _getsvnversion() == '1.3':
+            url += "@%d" % rev
         else:
-            if _getsvnversion() == '1.3':
-                url += "@%d" % rev
-            else:
-                args.append('-r' + str(rev))
+            args.append('-r' + str(rev))
         args.append(url)
         self._authsvn('co', args)
 
@@ -560,9 +546,8 @@ class SvnWCCommandPath(common.PathBase):
         """ create & return the directory joined with args. """
         if args:
             return self.join(*args).mkdir()
-        else:
-            self._svn('mkdir')
-            return self
+        self._svn('mkdir')
+        return self
 
     def add(self):
         """ add ourself to svn """
@@ -624,20 +609,12 @@ class SvnWCCommandPath(common.PathBase):
         else:
             #1.2 supports: externals = '--ignore-externals'
             externals = ''
-        if rec:
-            rec= ''
-        else:
-            rec = '--non-recursive'
-
+        rec = '' if rec else '--non-recursive'
         # XXX does not work on all subversion versions
         #if not externals:
         #    externals = '--ignore-externals'
 
-        if updates:
-            updates = '-u'
-        else:
-            updates = ''
-
+        updates = '-u' if updates else ''
         try:
             cmd = 'status -v --xml --no-ignore %s %s %s' % (
                     updates, rec, externals)
@@ -658,8 +635,7 @@ class SvnWCCommandPath(common.PathBase):
         args = []
         if rev is not None:
             args.append("-r %d" % rev)
-        out = self._authsvn('diff', args)
-        return out
+        return self._authsvn('diff', args)
 
     def blame(self):
         """ return a list of tuples of three elements:
@@ -669,8 +645,7 @@ class SvnWCCommandPath(common.PathBase):
         result = []
         blamelines = out.splitlines()
         reallines = py.path.svnurl(self.url).readlines()
-        for i, (blameline, line) in enumerate(
-                zip(blamelines, reallines)):
+        for blameline, line in zip(blamelines, reallines):
             m = rex_blame.match(blameline)
             if not m:
                 raise ValueError("output line %r of svn blame does not match "
@@ -731,11 +706,7 @@ If rec is True, then return a dictionary mapping sub-paths to such mappings.
     def revert(self, rec=0):
         """ revert the local changes of this path. if rec is True, do so
 recursively. """
-        if rec:
-            result = self._svn('revert -R')
-        else:
-            result = self._svn('revert')
-        return result
+        return self._svn('revert -R') if rec else self._svn('revert')
 
     def new(self, **kw):
         """ create a modified version of this path. A 'rev' argument
@@ -748,10 +719,7 @@ recursively. """
                                         |--|     purebasename
                                             |--| ext
         """
-        if kw:
-            localpath = self.localpath.new(**kw)
-        else:
-            localpath = self.localpath
+        localpath = self.localpath.new(**kw) if kw else self.localpath
         return self.__class__(localpath, auth=self.auth)
 
     def join(self, *args, **kwargs):
@@ -771,9 +739,11 @@ recursively. """
                 output = self._svn('info')
             except py.process.cmdexec.Error:
                 e = sys.exc_info()[1]
-                if e.err.find('Path is not a working copy directory') != -1:
-                    raise py.error.ENOENT(self, e.err)
-                elif e.err.find("is not under version control") != -1:
+                if (
+                    e.err.find('Path is not a working copy directory') != -1
+                    or e.err.find('Path is not a working copy directory') == -1
+                    and e.err.find("is not under version control") != -1
+                ):
                     raise py.error.ENOENT(self, e.err)
                 raise
             # XXX SVN 1.3 has output on stderr instead of stdout (while it does
@@ -785,10 +755,9 @@ recursively. """
             info = InfoSvnWCCommand(output)
 
             # Can't reliably compare on Windows without access to win32api
-            if py.std.sys.platform != 'win32':
-                if info.path != self.localpath:
-                    raise py.error.ENOENT(self, "not a versioned resource:" +
-                            " %s != %s" % (info.path, self.localpath))
+            if py.std.sys.platform != 'win32' and info.path != self.localpath:
+                raise py.error.ENOENT(self, "not a versioned resource:" +
+                        " %s != %s" % (info.path, self.localpath))
             cache.info[self] = info
         return info
 
@@ -845,13 +814,13 @@ rev_end is the last revision (defaulting to HEAD).
 if verbose is True, then the LogEntry instances also know which files changed.
 """
         assert self.check()   # make it simpler for the pipe
-        rev_start = rev_start is None and "HEAD" or rev_start
-        rev_end = rev_end is None and "HEAD" or rev_end
+        rev_start = "HEAD" if rev_start is None else rev_start
+        rev_end = "HEAD" if rev_end is None else rev_end
         if rev_start == "HEAD" and rev_end == 1:
                 rev_opt = ""
         else:
             rev_opt = "-r %s:%s" % (rev_start, rev_end)
-        verbose_opt = verbose and "-v" or ""
+        verbose_opt = "-v" if verbose else ""
         locale_env = fixlocale()
         # some blather on stderr
         auth_opt = self._makeauthoptions()
@@ -874,11 +843,11 @@ if verbose is True, then the LogEntry instances also know which files changed.
             tree = minidom.parseString(stdout)
         except ExpatError:
             raise ValueError('no such revision')
-        result = []
-        for logentry in filter(None, tree.firstChild.childNodes):
-            if logentry.nodeType == logentry.ELEMENT_NODE:
-                result.append(LogEntry(logentry))
-        return result
+        return [
+            LogEntry(logentry)
+            for logentry in filter(None, tree.firstChild.childNodes)
+            if logentry.nodeType == logentry.ELEMENT_NODE
+        ]
 
     def size(self):
         """ Return the size of the file content of the Path. """
@@ -1064,14 +1033,12 @@ class XMLWCStatus(WCStatus):
                 continue
 
             rev = statusel.getAttribute('revision')
-            if itemstatus == 'added' or itemstatus == 'none':
+            if itemstatus in ['added', 'none']:
                 rev = '0'
                 modrev = '?'
                 author = '?'
                 date = ''
-            elif itemstatus == "replaced":
-                pass
-            else:
+            elif itemstatus != "replaced":
                 #print entryel.toxml()
                 commitel = entryel.getElementsByTagName('commit')[0]
                 if commitel:
@@ -1081,11 +1048,8 @@ class XMLWCStatus(WCStatus):
                     if author_els:
                         for c in author_els[0].childNodes:
                             author += c.nodeValue
-                    date = ''
-                    for c in commitel.getElementsByTagName('date')[0]\
-                            .childNodes:
-                        date += c.nodeValue
-
+                    date = ''.join(c.nodeValue for c in commitel.getElementsByTagName('date')[0]\
+                            .childNodes)
             wcpath = rootwcpath.join(path, abs=1)
 
             assert itemstatus != 'modified' or wcpath.check(file=1), (
@@ -1152,7 +1116,7 @@ class InfoSvnWCCommand:
         except KeyError:
             raise  ValueError("Not a versioned resource")
             #raise ValueError, "Not a versioned resource %r" % path
-        self.kind = d['nodekind'] == 'directory' and 'dir' or d['nodekind']
+        self.kind = 'dir' if d['nodekind'] == 'directory' else d['nodekind']
         try:
             self.rev = int(d['revision'])
         except KeyError:
@@ -1219,20 +1183,18 @@ class LogEntry:
             if lpart.nodeType == lpart.ELEMENT_NODE:
                 if lpart.nodeName == 'author':
                     self.author = lpart.firstChild.nodeValue
-                elif lpart.nodeName == 'msg':
-                    if lpart.firstChild:
-                        self.msg = lpart.firstChild.nodeValue
-                    else:
-                        self.msg = ''
                 elif lpart.nodeName == 'date':
                     #2003-07-29T20:05:11.598637Z
                     timestr = lpart.firstChild.nodeValue
                     self.date = parse_apr_time(timestr)
+                elif lpart.nodeName == 'msg':
+                    self.msg = lpart.firstChild.nodeValue if lpart.firstChild else ''
                 elif lpart.nodeName == 'paths':
-                    self.strpaths = []
-                    for ppart in filter(None, lpart.childNodes):
-                        if ppart.nodeType == ppart.ELEMENT_NODE:
-                            self.strpaths.append(PathEntry(ppart))
+                    self.strpaths = [
+                        PathEntry(ppart)
+                        for ppart in filter(None, lpart.childNodes)
+                        if ppart.nodeType == ppart.ELEMENT_NODE
+                    ]
     def __repr__(self):
         return '<Logentry rev=%d author=%s date=%s>' % (
             self.rev, self.author, self.date)

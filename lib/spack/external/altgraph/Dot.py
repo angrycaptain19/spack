@@ -298,11 +298,9 @@ class Dot(object):
             neato_cmd = "%s -o %s %s" % (
                 self.neato, self.temp_dot, self.temp_neo)
             os.system(neato_cmd)
-            plot_cmd = self.dot
         else:
             self.save_dot(self.temp_dot)
-            plot_cmd = self.dot
-
+        plot_cmd = self.dot
         file_name = "%s.%s" % (file_name, file_type)
         create_cmd = "%s -T%s %s -o %s" % (
             plot_cmd, file_type, self.temp_dot, file_name)

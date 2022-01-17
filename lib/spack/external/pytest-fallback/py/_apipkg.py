@@ -16,20 +16,15 @@ def _py_abspath(path):
     special version of abspath
     that will leave paths from jython jars alone
     """
-    if path.startswith('__pyclasspath__'):
-
-        return path
-    else:
-        return os.path.abspath(path)
+    return path if path.startswith('__pyclasspath__') else os.path.abspath(path)
 
 def initpkg(pkgname, exportdefs, attr=dict()):
     """ initialize given package from the export definitions. """
     oldmod = sys.modules.get(pkgname)
-    d = {}
     f = getattr(oldmod, '__file__', None)
     if f:
         f = _py_abspath(f)
-    d['__file__'] = f
+    d = {'__file__': f}
     if hasattr(oldmod, '__version__'):
         d['__version__'] = oldmod.__version__
     if hasattr(oldmod, '__loader__'):

@@ -160,7 +160,7 @@ def get_parametrized_fixture_keys(item, scopenum):
 
 def reorder_items(items):
     argkeys_cache = {}
-    for scopenum in range(0, scopenum_function):
+    for scopenum in range(scopenum_function):
         argkeys_cache[scopenum] = d = {}
         for item in items:
             keys = collections.OrderedDict.fromkeys(get_parametrized_fixture_keys(item, scopenum))
@@ -232,9 +232,7 @@ def fillfixtures(function):
         request = function._request = FixtureRequest(function)
         request._fillfixtures()
         # prune out funcargs for jstests
-        newfuncargs = {}
-        for name in fi.argnames:
-            newfuncargs[name] = function.funcargs[name]
+        newfuncargs = {name: function.funcargs[name] for name in fi.argnames}
         function.funcargs = newfuncargs
     else:
         request._fillfixtures()
@@ -640,7 +638,7 @@ class FixtureLookupError(LookupError):
                 addline(error_msg % (fspath, lineno + 1))
             else:
                 addline("file %s, line %s" % (fspath, lineno + 1))
-                for i, line in enumerate(lines):
+                for line in lines:
                     line = line.rstrip()
                     addline("  " + line)
                     if line.lstrip().startswith('def'):
@@ -730,7 +728,7 @@ class FixtureDef:
             where=baseid
         )
         self.params = params
-        startindex = unittest and 1 or None
+        startindex = 1 if unittest else None
         self.argnames = getfuncargnames(func, startindex=startindex)
         self.unittest = unittest
         self.ids = ids
@@ -801,15 +799,11 @@ def pytest_fixture_setup(fixturedef, request):
         kwargs[argname] = result
 
     fixturefunc = fixturedef.func
-    if fixturedef.unittest:
-        if request.instance is not None:
+    if request.instance is not None:
+        if fixturedef.unittest:
             # bind the unbound method to the TestCase instance
             fixturefunc = fixturedef.func.__get__(request.instance)
-    else:
-        # the fixture function needs to be bound to the actual
-        # request.instance so that code working with "fixturedef" behaves
-        # as expected.
-        if request.instance is not None:
+        else:
             fixturefunc = getimfunc(fixturedef.func)
             if fixturefunc != fixturedef.func:
                 fixturefunc = fixturefunc.__get__(request.instance)

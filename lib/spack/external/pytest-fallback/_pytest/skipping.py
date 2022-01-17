@@ -88,8 +88,7 @@ class MarkEvaluator:
         except TEST_OUTCOME:
             self.exc = sys.exc_info()
             if isinstance(self.exc[1], SyntaxError):
-                msg = [" " * (self.exc[1].offset + 4) + "^", ]
-                msg.append("SyntaxError: invalid syntax")
+                msg = [" " * (self.exc[1].offset + 4) + "^", 'SyntaxError: invalid syntax']
             else:
                 msg = traceback.format_exception_only(*self.exc[:2])
             fail("Error evaluating %r expression\n"
@@ -145,10 +144,7 @@ class MarkEvaluator:
     def getexplanation(self):
         expl = getattr(self, 'reason', None) or self.get('reason', None)
         if not expl:
-            if not hasattr(self, 'expr'):
-                return ""
-            else:
-                return "condition: " + str(self.expr)
+            return "" if not hasattr(self, 'expr') else "condition: " + str(self.expr)
         return expl
 
 
@@ -190,9 +186,8 @@ def check_xfail_no_run(item):
     """check xfail(run=False)"""
     if not item.config.option.runxfail:
         evalxfail = item._evalxfail
-        if evalxfail.istrue():
-            if not evalxfail.get('run', True):
-                xfail("[NOTRUN] " + evalxfail.getexplanation())
+        if evalxfail.istrue() and not evalxfail.get('run', True):
+            xfail("[NOTRUN] " + evalxfail.getexplanation())
 
 
 def check_strict_xfail(pyfuncitem):
@@ -346,10 +341,7 @@ def folded_skips(skipped):
         key = event.longrepr
         assert len(key) == 3, (event, key)
         d.setdefault(key, []).append(event)
-    values = []
-    for key, events in d.items():
-        values.append((len(events),) + key)
-    return values
+    return [(len(events),) + key for key, events in d.items()]
 
 
 def show_skipped(terminalreporter, lines):

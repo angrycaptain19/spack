@@ -153,11 +153,7 @@ def do_urlencode(value):
     if isinstance(value, string_types) or not isinstance(value, abc.Iterable):
         return unicode_urlencode(value)
 
-    if isinstance(value, dict):
-        items = iteritems(value)
-    else:
-        items = iter(value)
-
+    items = iteritems(value) if isinstance(value, dict) else iter(value)
     return u"&".join(
         "%s=%s" % (unicode_urlencode(k, for_qs=True), unicode_urlencode(v, for_qs=True))
         for k, v in items
@@ -488,10 +484,7 @@ def do_join(eval_ctx, value, d=u"", attribute=None):
                 do_escape = True
             else:
                 value[idx] = text_type(item)
-        if do_escape:
-            d = escape(d)
-        else:
-            d = text_type(d)
+        d = escape(d) if do_escape else text_type(d)
         return d.join(value)
 
     # no html involved, to normal joining
@@ -546,7 +539,7 @@ def do_filesizeformat(value, binary=False):
     prefixes are used (Mebi, Gibi).
     """
     bytes = float(value)
-    base = binary and 1024 or 1000
+    base = 1024 if binary else 1000
     prefixes = [
         (binary and "KiB" or "kB"),
         (binary and "MiB" or "MB"),
@@ -774,9 +767,7 @@ def do_int(value, default=0, base=10):
     The base is ignored for decimal numbers and non-string values.
     """
     try:
-        if isinstance(value, string_types):
-            return int(value, base)
-        return int(value)
+        return int(value, base) if isinstance(value, string_types) else int(value)
     except (TypeError, ValueError):
         # this quirk is necessary so that "42.23"|int gives 42.
         try:

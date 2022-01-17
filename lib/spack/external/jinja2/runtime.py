@@ -87,10 +87,7 @@ def new_context(
     """Internal helper for context creation."""
     if vars is None:
         vars = {}
-    if shared:
-        parent = vars
-    else:
-        parent = dict(globals or (), **vars)
+    parent = vars if shared else dict(globals or (), **vars)
     if locals:
         # if the parent is shared a copy should be created because
         # we don't want to modify the dict passed
@@ -191,7 +188,7 @@ class Context(with_metaclass(ContextMeta)):
         # create the initial mapping of blocks.  Whenever template inheritance
         # takes place the runtime will update this mapping with the new blocks
         # from the template.
-        self.blocks = dict((k, [v]) for k, v in iteritems(blocks))
+        self.blocks = {k: [v] for k, v in iteritems(blocks)}
 
         # In case we detect the fast resolve mode we can set up an alias
         # here that bypasses the legacy code logic.
@@ -244,7 +241,7 @@ class Context(with_metaclass(ContextMeta)):
 
     def get_exported(self):
         """Get a new dict with the exported variables."""
-        return dict((k, self.vars[k]) for k in self.exported_vars)
+        return {k: self.vars[k] for k in self.exported_vars}
 
     def get_all(self):
         """Return the complete context as dict including the exported
@@ -814,8 +811,7 @@ class Undefined(object):
         return 0
 
     def __iter__(self):
-        if 0:
-            yield None
+        pass
 
     def __nonzero__(self):
         return False

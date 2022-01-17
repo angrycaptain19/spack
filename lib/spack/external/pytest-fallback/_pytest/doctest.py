@@ -60,10 +60,7 @@ def _is_doctest(config, path, parent):
     if path.ext in ('.txt', '.rst') and parent.session.isinitpath(path):
         return True
     globs = config.getoption("doctestglob") or ['test*.txt']
-    for glob in globs:
-        if path.check(fnmatch=glob):
-            return True
-    return False
+    return any(path.check(fnmatch=glob) for glob in globs)
 
 
 class ReprFailDoctest(TerminalRepr):
@@ -100,44 +97,41 @@ class DoctestItem(pytest.Item):
 
     def repr_failure(self, excinfo):
         import doctest
-        if excinfo.errisinstance((doctest.DocTestFailure,
-                                  doctest.UnexpectedException)):
-            doctestfailure = excinfo.value
-            example = doctestfailure.example
-            test = doctestfailure.test
-            filename = test.filename
-            if test.lineno is None:
-                lineno = None
-            else:
-                lineno = test.lineno + example.lineno + 1
-            message = excinfo.type.__name__
-            reprlocation = ReprFileLocation(filename, lineno, message)
-            checker = _get_checker()
-            report_choice = _get_report_choice(self.config.getoption("doctestreport"))
-            if lineno is not None:
-                lines = doctestfailure.test.docstring.splitlines(False)
-                # add line numbers to the left of the error message
-                lines = ["%03d %s" % (i + test.lineno + 1, x)
-                         for (i, x) in enumerate(lines)]
-                # trim docstring error lines to 10
-                lines = lines[max(example.lineno - 9, 0):example.lineno + 1]
-            else:
-                lines = ['EXAMPLE LOCATION UNKNOWN, not showing all tests of that example']
-                indent = '>>>'
-                for line in example.source.splitlines():
-                    lines.append('??? %s %s' % (indent, line))
-                    indent = '...'
-            if excinfo.errisinstance(doctest.DocTestFailure):
-                lines += checker.output_difference(example,
-                                                   doctestfailure.got, report_choice).split("\n")
-            else:
-                inner_excinfo = ExceptionInfo(excinfo.value.exc_info)
-                lines += ["UNEXPECTED EXCEPTION: %s" %
-                          repr(inner_excinfo.value)]
-                lines += traceback.format_exception(*excinfo.value.exc_info)
-            return ReprFailDoctest(reprlocation, lines)
-        else:
+        if not excinfo.errisinstance(
+            (doctest.DocTestFailure, doctest.UnexpectedException)
+        ):
             return super(DoctestItem, self).repr_failure(excinfo)
+        doctestfailure = excinfo.value
+        example = doctestfailure.example
+        test = doctestfailure.test
+        filename = test.filename
+        lineno = None if test.lineno is None else test.lineno + example.lineno + 1
+        message = excinfo.type.__name__
+        reprlocation = ReprFileLocation(filename, lineno, message)
+        checker = _get_checker()
+        report_choice = _get_report_choice(self.config.getoption("doctestreport"))
+        if lineno is not None:
+            lines = doctestfailure.test.docstring.splitlines(False)
+            # add line numbers to the left of the error message
+            lines = ["%03d %s" % (i + test.lineno + 1, x)
+                     for (i, x) in enumerate(lines)]
+            # trim docstring error lines to 10
+            lines = lines[max(example.lineno - 9, 0):example.lineno + 1]
+        else:
+            lines = ['EXAMPLE LOCATION UNKNOWN, not showing all tests of that example']
+            indent = '>>>'
+            for line in example.source.splitlines():
+                lines.append('??? %s %s' % (indent, line))
+                indent = '...'
+        if excinfo.errisinstance(doctest.DocTestFailure):
+            lines += checker.output_difference(example,
+                                               doctestfailure.got, report_choice).split("\n")
+        else:
+            inner_excinfo = ExceptionInfo(excinfo.value.exc_info)
+            lines += ["UNEXPECTED EXCEPTION: %s" %
+                      repr(inner_excinfo.value)]
+            lines += traceback.format_exception(*excinfo.value.exc_info)
+        return ReprFailDoctest(reprlocation, lines)
 
     def reportinfo(self):
         return self.fspath, self.dtest.lineno, "[doctest] %s" % self.name

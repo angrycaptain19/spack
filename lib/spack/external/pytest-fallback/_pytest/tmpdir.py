@@ -56,12 +56,7 @@ class TempdirFactory:
             else:
                 temproot = py.path.local.get_temproot()
                 user = get_user()
-                if user:
-                    # use a sub-directory in the temproot to speed-up
-                    # make_numbered_dir() call
-                    rootdir = temproot.join('pytest-of-%s' % user)
-                else:
-                    rootdir = temproot
+                rootdir = temproot.join('pytest-of-%s' % user) if user else temproot
                 rootdir.ensure(dir=1)
                 basetemp = py.path.local.make_numbered_dir(prefix='pytest-',
                                                            rootdir=rootdir)
@@ -122,5 +117,4 @@ def tmpdir(request, tmpdir_factory):
     MAXVAL = 30
     if len(name) > MAXVAL:
         name = name[:MAXVAL]
-    x = tmpdir_factory.mktemp(name, numbered=True)
-    return x
+    return tmpdir_factory.mktemp(name, numbered=True)

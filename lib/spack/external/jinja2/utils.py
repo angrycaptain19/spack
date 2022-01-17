@@ -93,8 +93,6 @@ def is_undefined(obj):
 
 def consume(iterable):
     """Consumes an iterable without doing anything with it."""
-    for _ in iterable:
-        pass
 
 
 def clear_caches():
@@ -138,10 +136,7 @@ def open_if_exists(filename, mode="rb"):
     """Returns a file descriptor for the filename if that file exists,
     otherwise ``None``.
     """
-    if not os.path.isfile(filename):
-        return None
-
-    return open(filename, mode)
+    return None if not os.path.isfile(filename) else open(filename, mode)
 
 
 def object_type_repr(obj):
@@ -672,9 +667,8 @@ class Cycler(object):
         """Return the current item, then advance :attr:`current` to the
         next item.
         """
-        rv = self.current
         self.pos = (self.pos + 1) % len(self.items)
-        return rv
+        return self.current
 
     __next__ = next
 

@@ -74,10 +74,7 @@ def create_new_paste(contents):
     url = 'https://bpaste.net'
     response = urlopen(url, data=urlencode(params).encode('ascii')).read()
     m = re.search(r'href="/raw/(\w+)"', response.decode('utf-8'))
-    if m:
-        return '%s/show/%s' % (url, m.group(1))
-    else:
-        return 'bad response: ' + response
+    return '%s/show/%s' % (url, m.group(1)) if m else 'bad response: ' + response
 
 
 def pytest_terminal_summary(terminalreporter):

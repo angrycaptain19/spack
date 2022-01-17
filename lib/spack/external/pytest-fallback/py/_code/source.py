@@ -48,17 +48,14 @@ class Source(object):
         try:
             return self.lines == other.lines
         except AttributeError:
-            if isinstance(other, str):
-                return str(self) == other
-            return False
+            return str(self) == other if isinstance(other, str) else False
 
     def __getitem__(self, key):
         if isinstance(key, int):
             return self.lines[key]
-        else:
-            if key.step not in (None, 1):
-                raise IndexError("cannot slice a Source with a step")
-            return self.__getslice__(key.start, key.stop)
+        if key.step not in (None, 1):
+            raise IndexError("cannot slice a Source with a step")
+        return self.__getslice__(key.start, key.stop)
 
     def __len__(self):
         return len(self.lines)
@@ -140,10 +137,7 @@ class Source(object):
         else:
             syntax_checker = parser.suite
 
-        if deindent:
-            source = str(self.deindent())
-        else:
-            source = str(self)
+        source = str(self.deindent()) if deindent else str(self)
         try:
             #compile(source+'\n', "x", "exec")
             syntax_checker(source+'\n')
@@ -212,8 +206,7 @@ def compile_(source, filename=None, mode='exec', flags=
         return cpy_compile(source, filename, mode, flags, dont_inherit)
     _genframe = sys._getframe(1) # the caller
     s = Source(source)
-    co = s.compile(filename, mode, flags, _genframe=_genframe)
-    return co
+    return s.compile(filename, mode, flags, _genframe=_genframe)
 
 
 def getfslineno(obj):
@@ -314,7 +307,7 @@ def get_statement_startend2(lineno, node):
     # AST's line numbers start indexing at 1
     l = []
     for x in ast.walk(node):
-        if isinstance(x, _ast.stmt) or isinstance(x, _ast.ExceptHandler):
+        if isinstance(x, (_ast.stmt, _ast.ExceptHandler)):
             l.append(x.lineno - 1)
             for name in "finalbody", "orelse":
                 val = getattr(x, name, None)
@@ -324,10 +317,7 @@ def get_statement_startend2(lineno, node):
     l.sort()
     insert_index = bisect_right(l, lineno)
     start = l[insert_index - 1]
-    if insert_index >= len(l):
-        end = None
-    else:
-        end = l[insert_index]
+    end = None if insert_index >= len(l) else l[insert_index]
     return start, end
 
 

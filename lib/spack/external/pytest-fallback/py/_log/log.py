@@ -146,7 +146,7 @@ class Path(object):
             self._openfile()
 
     def _openfile(self):
-        mode = self._append and 'a' or 'w'
+        mode = 'a' if self._append else 'w'
         f = open(self._filename, mode)
         self._file = f
 

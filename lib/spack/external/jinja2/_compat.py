@@ -84,9 +84,7 @@ else:
             f.write(marshal.dumps(code))
 
     def marshal_load(f):
-        if isinstance(f, file):
-            return marshal.load(f)
-        return marshal.loads(f.read())
+        return marshal.load(f) if isinstance(f, file) else marshal.loads(f.read())
 
 
 def with_metaclass(meta, *bases):

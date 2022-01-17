@@ -82,14 +82,10 @@ class ResultLog(object):
             return
         res = self.config.hook.pytest_report_teststatus(report=report)
         code = res[1]
-        if code == 'x':
+        if code == 'x' or code != 'X' and not report.passed and report.failed:
             longrepr = str(report.longrepr)
-        elif code == 'X':
+        elif code == 'X' or report.passed:
             longrepr = ''
-        elif report.passed:
-            longrepr = ""
-        elif report.failed:
-            longrepr = str(report.longrepr)
         elif report.skipped:
             longrepr = str(report.longrepr[2])
         self.log_outcome(report, code, longrepr)

@@ -198,7 +198,7 @@ class DebugInterpreter(ast.NodeVisitor):
             explanations.append(explanation)
             if result == is_or:
                 break
-        name = is_or and " or " or " and "
+        name = " or " if is_or else " and "
         explanation = "(" + name.join(explanations) + ")"
         return explanation, result
 
@@ -297,7 +297,7 @@ class DebugInterpreter(ast.NodeVisitor):
                                               source_explanation, attr.attr)
         # Check if the attr is from an instance.
         source = "%r in getattr(__exprinfo_expr, '__dict__', {})"
-        source = source % (attr.attr,)
+        source %= (attr.attr,)
         co = self._compile(source)
         try:
             from_instance = self.frame.eval(co, __exprinfo_expr=source_result)
