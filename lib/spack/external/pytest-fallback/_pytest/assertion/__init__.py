@@ -92,9 +92,8 @@ def pytest_collection(session):
     # so for example not in the master process of pytest-xdist
     # (which does not collect test modules)
     assertstate = getattr(session.config, '_assertstate', None)
-    if assertstate:
-        if assertstate.hook is not None:
-            assertstate.hook.set_session(session)
+    if assertstate and assertstate.hook is not None:
+        assertstate.hook.set_session(session)
 
 
 def pytest_runtest_setup(item):
@@ -139,9 +138,8 @@ def pytest_runtest_teardown(item):
 
 def pytest_sessionfinish(session):
     assertstate = getattr(session.config, '_assertstate', None)
-    if assertstate:
-        if assertstate.hook is not None:
-            assertstate.hook.set_session(None)
+    if assertstate and assertstate.hook is not None:
+        assertstate.hook.set_session(None)
 
 
 # Expose this plugin's implementation for the pytest_assertrepr_compare hook

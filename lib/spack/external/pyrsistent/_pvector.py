@@ -19,10 +19,7 @@ def compare_pvector(v, other, operator):
 
 
 def _index_or_slice(index, stop):
-    if stop is None:
-        return index
-
-    return slice(index, stop)
+    return index if stop is None else slice(index, stop)
 
 
 class PythonPVector(object):
@@ -334,10 +331,7 @@ class PythonPVector(object):
         return PythonPVector(self._count + 1, new_shift, new_root, [val])
 
     def _new_path(self, level, node):
-        if level == 0:
-            return node
-
-        return [self._new_path(level - SHIFT, node)]
+        return node if level == 0 else [self._new_path(level - SHIFT, node)]
 
     def _mutating_insert_tail(self):
         self._root, self._shift = self._create_new_root()

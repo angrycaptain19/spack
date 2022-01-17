@@ -295,10 +295,7 @@ class LocalPath(FSBase):
                     append(basename)
                 else:
                     i = basename.rfind('.')
-                    if i == -1:
-                        purebasename, ext = basename, ''
-                    else:
-                        purebasename, ext = basename[:i], basename[i:]
+                    purebasename, ext = (basename, '') if i == -1 else (basename[:i], basename[i:])
                     if name == 'purebasename':
                         append(purebasename)
                     elif name == 'ext':
@@ -486,12 +483,11 @@ class LocalPath(FSBase):
         if 'b' in mode:
             if not py.builtin._isbytes(data):
                 raise ValueError("can only process bytes")
-        else:
-            if not py.builtin._istext(data):
-                if not py.builtin._isbytes(data):
-                    data = str(data)
-                else:
-                    data = py.builtin._totext(data, sys.getdefaultencoding())
+        elif not py.builtin._istext(data):
+            if not py.builtin._isbytes(data):
+                data = str(data)
+            else:
+                data = py.builtin._totext(data, sys.getdefaultencoding())
         f = self.open(mode)
         try:
             f.write(data)
@@ -522,11 +518,10 @@ class LocalPath(FSBase):
         p = self.join(*args)
         if kwargs.get('dir', 0):
             return p._ensuredirs()
-        else:
-            p.dirpath()._ensuredirs()
-            if not p.check(file=1):
-                p.open('w').close()
-            return p
+        p.dirpath()._ensuredirs()
+        if not p.check(file=1):
+            p.open('w').close()
+        return p
 
     def stat(self, raising=True):
         """ Return an os.stat() tuple. """
@@ -625,9 +620,8 @@ class LocalPath(FSBase):
             if ensuremode == "append":
                 if s not in sys.path:
                     sys.path.append(s)
-            else:
-                if s != sys.path[0]:
-                    sys.path.insert(0, s)
+            elif s != sys.path[0]:
+                sys.path.insert(0, s)
 
     def pyimport(self, modname=None, ensuresyspath=True):
         """ return path as an imported python module.
@@ -669,9 +663,11 @@ class LocalPath(FSBase):
                 modfile = modfile[:-1]
             elif modfile.endswith('$py.class'):
                 modfile = modfile[:-9] + '.py'
-            if modfile.endswith(os.path.sep + "__init__.py"):
-                if self.basename != "__init__.py":
-                    modfile = modfile[:-12]
+            if (
+                modfile.endswith(os.path.sep + "__init__.py")
+                and self.basename != "__init__.py"
+            ):
+                modfile = modfile[:-12]
             try:
                 issame = self.samefile(modfile)
             except py.error.ENOENT:
@@ -751,9 +747,8 @@ class LocalPath(FSBase):
                     p = py.path.local(x).join(name, abs=True) + addext
                     try:
                         if p.check(file=1):
-                            if checker:
-                                if not checker(p):
-                                    continue
+                            if checker and not checker(p):
+                                continue
                             return p
                     except py.error.EACCES:
                         pass

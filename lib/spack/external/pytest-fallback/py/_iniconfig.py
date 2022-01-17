@@ -82,14 +82,12 @@ class IniConfig(object):
             # new value
             if name is not None and data is not None:
                 result.append((lineno, section, name, data))
-            # new section
-            elif name is not None and data is None:
+            elif name is not None:
                 if not name:
                     self._raise(lineno, 'empty section name')
                 section = name
                 result.append((lineno, section, None, None))
-            # continuation
-            elif name is None and data is not None:
+            elif data is not None:
                 if not result:
                     self._raise(lineno, 'unexpected value continuation')
                 last = result.pop()
@@ -104,10 +102,7 @@ class IniConfig(object):
 
     def _parseline(self, line, lineno):
         # blank lines
-        if iscommentline(line):
-            line = ""
-        else:
-            line = line.rstrip()
+        line = "" if iscommentline(line) else line.rstrip()
         if not line:
             return None, None
         # section

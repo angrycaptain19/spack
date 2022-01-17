@@ -82,9 +82,7 @@ def pytest_report_teststatus(report):
     elif report.skipped:
         letter = "s"
     elif report.failed:
-        letter = "F"
-        if report.when != "call":
-            letter = "f"
+        letter = "f" if report.when != "call" else "F"
     return report.outcome, letter, report.outcome.upper()
 
 
@@ -114,12 +112,11 @@ class WarningReport:
         if self.nodeid:
             return self.nodeid
         if self.fslocation:
-            if isinstance(self.fslocation, tuple) and len(self.fslocation) >= 2:
-                filename, linenum = self.fslocation[:2]
-                relpath = py.path.local(filename).relto(config.invocation_dir)
-                return '%s:%s' % (relpath, linenum)
-            else:
+            if not isinstance(self.fslocation, tuple) or len(self.fslocation) < 2:
                 return str(self.fslocation)
+            filename, linenum = self.fslocation[:2]
+            relpath = py.path.local(filename).relto(config.invocation_dir)
+            return '%s:%s' % (relpath, linenum)
         return None
 
 
@@ -257,13 +254,12 @@ class TerminalReporter:
         else:
             if isinstance(word, tuple):
                 word, markup = word
-            else:
-                if rep.passed:
-                    markup = {'green': True}
-                elif rep.failed:
-                    markup = {'red': True}
-                elif rep.skipped:
-                    markup = {'yellow': True}
+            elif rep.passed:
+                markup = {'green': True}
+            elif rep.failed:
+                markup = {'red': True}
+            elif rep.skipped:
+                markup = {'yellow': True}
             line = self._locationline(rep.nodeid, *rep.location)
             if not hasattr(rep, 'node'):
                 self.write_ensure_prefix(line, word, **markup)
@@ -297,10 +293,7 @@ class TerminalReporter:
 
         errors = len(self.stats.get('error', []))
         skipped = len(self.stats.get('skipped', []))
-        if final:
-            line = "collected "
-        else:
-            line = "collecting "
+        line = "collected " if final else "collecting "
         line += str(self._numcollected) + " item" + ('' if self._numcollected == 1 else 's')
         if errors:
             line += " / %d errors" % errors
@@ -479,11 +472,7 @@ class TerminalReporter:
     # summaries for sessionfinish
     #
     def getreports(self, name):
-        values = []
-        for x in self.stats.get(name, []):
-            if not hasattr(x, '_pdbshown'):
-                values.append(x)
-        return values
+        return [x for x in self.stats.get(name, []) if not hasattr(x, '_pdbshown')]
 
     def summary_warnings(self):
         if self.hasopt("w"):
@@ -504,16 +493,17 @@ class TerminalReporter:
             self._tw.line('-- Docs: http://doc.pytest.org/en/latest/warnings.html')
 
     def summary_passes(self):
-        if self.config.option.tbstyle != "no":
-            if self.hasopt("P"):
-                reports = self.getreports('passed')
-                if not reports:
-                    return
-                self.write_sep("=", "PASSES")
-                for rep in reports:
-                    msg = self._getfailureheadline(rep)
-                    self.write_sep("_", msg)
-                    self._outrep_summary(rep)
+        if self.config.option.tbstyle == "no":
+            return
+        if self.hasopt("P"):
+            reports = self.getreports('passed')
+            if not reports:
+                return
+            self.write_sep("=", "PASSES")
+            for rep in reports:
+                msg = self._getfailureheadline(rep)
+                self.write_sep("_", msg)
+                self._outrep_summary(rep)
 
     def print_teardown_sections(self, rep):
         for secname, content in rep.sections:
@@ -524,41 +514,43 @@ class TerminalReporter:
                 self._tw.line(content)
 
     def summary_failures(self):
-        if self.config.option.tbstyle != "no":
-            reports = self.getreports('failed')
-            if not reports:
-                return
-            self.write_sep("=", "FAILURES")
-            for rep in reports:
-                if self.config.option.tbstyle == "line":
-                    line = self._getcrashline(rep)
-                    self.write_line(line)
-                else:
-                    msg = self._getfailureheadline(rep)
-                    markup = {'red': True, 'bold': True}
-                    self.write_sep("_", msg, **markup)
-                    self._outrep_summary(rep)
-                    for report in self.getreports(''):
-                        if report.nodeid == rep.nodeid and report.when == 'teardown':
-                            self.print_teardown_sections(report)
+        if self.config.option.tbstyle == "no":
+            return
+        reports = self.getreports('failed')
+        if not reports:
+            return
+        self.write_sep("=", "FAILURES")
+        for rep in reports:
+            if self.config.option.tbstyle == "line":
+                line = self._getcrashline(rep)
+                self.write_line(line)
+            else:
+                msg = self._getfailureheadline(rep)
+                markup = {'red': True, 'bold': True}
+                self.write_sep("_", msg, **markup)
+                self._outrep_summary(rep)
+                for report in self.getreports(''):
+                    if report.nodeid == rep.nodeid and report.when == 'teardown':
+                        self.print_teardown_sections(report)
 
     def summary_errors(self):
-        if self.config.option.tbstyle != "no":
-            reports = self.getreports('error')
-            if not reports:
-                return
-            self.write_sep("=", "ERRORS")
-            for rep in self.stats['error']:
-                msg = self._getfailureheadline(rep)
-                if not hasattr(rep, 'when'):
-                    # collect
-                    msg = "ERROR collecting " + msg
-                elif rep.when == "setup":
-                    msg = "ERROR at setup of " + msg
-                elif rep.when == "teardown":
-                    msg = "ERROR at teardown of " + msg
-                self.write_sep("_", msg)
-                self._outrep_summary(rep)
+        if self.config.option.tbstyle == "no":
+            return
+        reports = self.getreports('error')
+        if not reports:
+            return
+        self.write_sep("=", "ERRORS")
+        for rep in self.stats['error']:
+            msg = self._getfailureheadline(rep)
+            if not hasattr(rep, 'when'):
+                # collect
+                msg = "ERROR collecting " + msg
+            elif rep.when == "setup":
+                msg = "ERROR at setup of " + msg
+            elif rep.when == "teardown":
+                msg = "ERROR at teardown of " + msg
+            self.write_sep("_", msg)
+            self._outrep_summary(rep)
 
     def _outrep_summary(self, rep):
         rep.toterminal(self._tw)
@@ -597,8 +589,7 @@ def repr_pythonversion(v=None):
 def flatten(values):
     for x in values:
         if isinstance(x, (list, tuple)):
-            for y in flatten(x):
-                yield y
+            yield from flatten(x)
         else:
             yield x
 
@@ -608,30 +599,22 @@ def build_summary_stats_line(stats):
             "xfailed xpassed warnings error").split()
     unknown_key_seen = False
     for key in stats.keys():
-        if key not in keys:
-            if key:  # setup/teardown reports have an empty key, ignore them
-                keys.append(key)
-                unknown_key_seen = True
+        if key not in keys and key:  # setup/teardown reports have an empty key, ignore them
+            keys.append(key)
+            unknown_key_seen = True
     parts = []
     for key in keys:
         val = stats.get(key, None)
         if val:
             parts.append("%d %s" % (len(val), key))
 
-    if parts:
-        line = ", ".join(parts)
-    else:
-        line = "no tests ran"
-
+    line = ", ".join(parts) if parts else "no tests ran"
     if 'failed' in stats or 'error' in stats:
         color = 'red'
-    elif 'warnings' in stats or unknown_key_seen:
+    elif 'warnings' in stats or unknown_key_seen or 'passed' not in stats:
         color = 'yellow'
-    elif 'passed' in stats:
-        color = 'green'
     else:
-        color = 'yellow'
-
+        color = 'green'
     return (line, color)
 
 

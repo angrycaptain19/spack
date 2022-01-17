@@ -115,8 +115,7 @@ class MachO(object):
             archs = [fat_arch.from_fileobj(fh)
                      for i in range(self.fat.nfat_arch)]
         elif self.fat.magic == FAT_MAGIC_64:
-            archs = [fat_arch64.from_fileobj(fh)
-                     for i in range(self.fat.nfat_arch)]
+            archs = [fat_arch64.from_fileobj(fh) for _ in range(self.fat.nfat_arch)]
         else:
             raise ValueError("Unknown fat header magic: %r" % (self.fat.magic))
 
@@ -230,11 +229,7 @@ class MachOHeader(object):
                 # for segment commands, read the list of segments
                 segs = []
                 # assert that the size makes sense
-                if cmd_load.cmd == LC_SEGMENT:
-                    section_cls = section
-                else:  # LC_SEGMENT_64
-                    section_cls = section_64
-
+                section_cls = section if cmd_load.cmd == LC_SEGMENT else section_64
                 expected_size = (
                     sizeof(klass) + sizeof(load_command) +
                     (sizeof(section_cls) * cmd_cmd.nsects)
@@ -248,7 +243,7 @@ class MachOHeader(object):
                         low_offset = min(low_offset, cmd_cmd.fileoff)
                 else:
                     # this one has multiple segments
-                    for j in range(cmd_cmd.nsects):
+                    for _ in range(cmd_cmd.nsects):
                         # read the segment
                         seg = section_cls.from_fileobj(fh, **kw)
                         # if the segment has a size and is not zero filled
@@ -265,18 +260,6 @@ class MachOHeader(object):
                         segs.append(seg)
                 # data is a list of segments
                 cmd_data = segs
-
-            # XXX: Disabled for now because writing back doesn't work
-            # elif cmd_load.cmd == LC_CODE_SIGNATURE:
-            #    c = fh.tell()
-            #    fh.seek(cmd_cmd.dataoff)
-            #    cmd_data = fh.read(cmd_cmd.datasize)
-            #    fh.seek(c)
-            # elif cmd_load.cmd == LC_SYMTAB:
-            #    c = fh.tell()
-            #    fh.seek(cmd_cmd.stroff)
-            #    cmd_data = fh.read(cmd_cmd.strsize)
-            #    fh.seek(c)
 
             else:
                 # data is a raw str
@@ -326,16 +309,16 @@ class MachOHeader(object):
         """
         data = changefunc(self.parent.filename)
         changed = False
-        if data is not None:
-            if self.rewriteInstallNameCommand(
-                    data.encode(sys.getfilesystemencoding())):
-                changed = True
+        if data is not None and self.rewriteInstallNameCommand(
+            data.encode(sys.getfilesystemencoding())
+        ):
+            changed = True
         for idx, name, filename in self.walkRelocatables():
             data = changefunc(filename)
-            if data is not None:
-                if self.rewriteDataForCommand(idx, data.encode(
-                        sys.getfilesystemencoding())):
-                    changed = True
+            if data is not None and self.rewriteDataForCommand(
+                idx, data.encode(sys.getfilesystemencoding())
+            ):
+                changed = True
         return changed
 
     def rewriteDataForCommand(self, idx, data):
@@ -382,17 +365,16 @@ class MachOHeader(object):
                     # segments..
                     for obj in data:
                         obj.to_fileobj(fileobj)
+            elif isinstance(data, str):
+                fileobj.write(data.encode(sys.getfilesystemencoding()))
+
+            elif isinstance(data, bytes):
+                fileobj.write(data)
+
             else:
-                if isinstance(data, str):
-                    fileobj.write(data.encode(sys.getfilesystemencoding()))
-
-                elif isinstance(data, bytes):
-                    fileobj.write(data)
-
-                else:
-                    # segments..
-                    for obj in data:
-                        obj.to_fileobj(fileobj)
+                # segments..
+                for obj in data:
+                    obj.to_fileobj(fileobj)
 
         # zero out the unused space, doubt this is strictly necessary
         # and is generally probably already the case

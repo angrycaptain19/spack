@@ -434,10 +434,7 @@ class PytestPluginManager(PluginManager):
         modname = str(modname)
         if self.get_plugin(modname) is not None:
             return
-        if modname in builtin_plugins:
-            importspec = "_pytest." + modname
-        else:
-            importspec = modname
+        importspec = "_pytest." + modname if modname in builtin_plugins else modname
         self.rewrite_hook.mark_rewrite(importspec)
         try:
             __import__(importspec)
@@ -493,9 +490,8 @@ class Parser:
         self.extra_info = {}
 
     def processoption(self, option):
-        if self._processopt:
-            if option.dest:
-                self._processopt(option)
+        if self._processopt and option.dest:
+            self._processopt(option)
 
     def getgroup(self, name, description="", after=None):
         """ get (or create) a named option Group.
@@ -713,18 +709,18 @@ class Argument:
                     "invalid option string %r: "
                     "must be at least two characters long" % opt, self)
             elif len(opt) == 2:
-                if not (opt[0] == "-" and opt[1] != "-"):
+                if opt[0] != "-" or opt[1] == "-":
                     raise ArgumentError(
                         "invalid short option string %r: "
                         "must be of the form -x, (x any non-dash char)" % opt,
                         self)
                 self._short_opts.append(opt)
+            elif opt[:2] != "--" or opt[2] == "-":
+                raise ArgumentError(
+                    "invalid long option string %r: "
+                    "must start with --, followed by non-dash" % opt,
+                    self)
             else:
-                if not (opt[0:2] == "--" and opt[2] != "-"):
-                    raise ArgumentError(
-                        "invalid long option string %r: "
-                        "must start with --, followed by non-dash" % opt,
-                        self)
                 self._long_opts.append(opt)
 
     def __repr__(self):
@@ -994,9 +990,12 @@ class Config(object):
         for name in opt._short_opts + opt._long_opts:
             self._opt2dest[name] = opt.dest
 
-        if hasattr(opt, 'default') and opt.dest:
-            if not hasattr(self.option, opt.dest):
-                setattr(self.option, opt.dest, opt.default)
+        if (
+            hasattr(opt, 'default')
+            and opt.dest
+            and not hasattr(self.option, opt.dest)
+        ):
+            setattr(self.option, opt.dest, opt.default)
 
     @hookimpl(trylast=True)
     def pytest_load_initial_conftests(self, early_config):
@@ -1027,12 +1026,6 @@ class Config(object):
                 hook = _pytest.assertion.install_importhook(self)
             except SystemError:
                 mode = 'plain'
-            else:
-                # REMOVED FOR SPACK: This routine imports `pkg_resources` from
-                # `setuptools`, but we do not need it for Spack. We have removed
-                # it from Spack to avoid a dependency on setuptools.
-                # self._mark_plugins_for_rewrite(hook)
-                pass
         self._warn_about_missing_assertion(mode)
 
     def _warn_about_missing_assertion(self, mode):
@@ -1112,8 +1105,8 @@ class Config(object):
                 cwd = os.getcwd()
                 if cwd == self.rootdir:
                     args = self.getini('testpaths')
-                if not args:
-                    args = [cwd]
+            if not args:
+                args = [cwd]
             self.args = args
         except PrintHelp:
             pass
@@ -1154,10 +1147,7 @@ class Config(object):
                 return []
         if type == "pathlist":
             dp = py.path.local(self.inicfg.config.path).dirpath()
-            values = []
-            for relpath in shlex.split(value):
-                values.append(dp.join(relpath, abs=True))
-            return values
+            return [dp.join(relpath, abs=True) for relpath in shlex.split(value)]
         elif type == "args":
             return shlex.split(value)
         elif type == "linelist":
@@ -1278,15 +1268,14 @@ def get_common_ancestor(paths):
             continue
         if common_ancestor is None:
             common_ancestor = path
+        elif path.relto(common_ancestor) or path == common_ancestor:
+            continue
+        elif common_ancestor.relto(path):
+            common_ancestor = path
         else:
-            if path.relto(common_ancestor) or path == common_ancestor:
-                continue
-            elif common_ancestor.relto(path):
-                common_ancestor = path
-            else:
-                shared = path.common(common_ancestor)
-                if shared is not None:
-                    common_ancestor = shared
+            shared = path.common(common_ancestor)
+            if shared is not None:
+                common_ancestor = shared
     if common_ancestor is None:
         common_ancestor = py.path.local()
     elif common_ancestor.isfile():
@@ -1302,9 +1291,7 @@ def get_dirs_from_args(args):
         return str(x).split('::')[0]
 
     def get_dir_from_path(path):
-        if path.isdir():
-            return path
-        return py.path.local(path.dirname)
+        return path if path.isdir() else py.path.local(path.dirname)
 
     # These look like paths but may not exist
     possible_paths = (
@@ -1373,10 +1360,10 @@ def create_terminal_writer(config, *args, **kwargs):
     and has access to a config object should use this function.
     """
     tw = py.io.TerminalWriter(*args, **kwargs)
-    if config.option.color == 'yes':
-        tw.hasmarkup = True
     if config.option.color == 'no':
         tw.hasmarkup = False
+    elif config.option.color == 'yes':
+        tw.hasmarkup = True
     return tw
 
 

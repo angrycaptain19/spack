@@ -161,12 +161,12 @@ class MonkeyPatch:
                                 "import string")
             name, target = derive_importpath(target, raising)
 
-        if not hasattr(target, name):
-            if raising:
-                raise AttributeError(name)
-        else:
+        if hasattr(target, name):
             self._setattr.append((target, name, getattr(target, name, notset)))
             delattr(target, name)
+
+        elif raising:
+            raise AttributeError(name)
 
     def setitem(self, dic, name, value):
         """ Set dictionary entry ``name`` to value. """
@@ -179,12 +179,12 @@ class MonkeyPatch:
         If ``raising`` is set to False, no exception will be raised if the
         key is missing.
         """
-        if name not in dic:
-            if raising:
-                raise KeyError(name)
-        else:
+        if name in dic:
             self._setitem.append((dic, name, dic.get(name, notset)))
             del dic[name]
+
+        elif raising:
+            raise KeyError(name)
 
     def setenv(self, name, value, prepend=None):
         """ Set environment variable ``name`` to ``value``.  If ``prepend``

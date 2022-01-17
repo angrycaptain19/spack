@@ -299,8 +299,7 @@ def _profile_match(matches, exceptions, line, match_times, exc_times):
         with _time(exc_times, i):
             if m.search(line):
                 return False
-    else:
-        return True
+    return True
 
 
 def _parse(lines, offset, profile):
@@ -388,7 +387,7 @@ class CTestLogParser(object):
             with open(stream) as f:
                 return self.parse(f, context, jobs)
 
-        lines = [line for line in stream]
+        lines = list(stream)
 
         if jobs is None:
             jobs = multiprocessing.cpu_count()

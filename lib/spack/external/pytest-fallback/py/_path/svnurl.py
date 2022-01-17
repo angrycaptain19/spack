@@ -41,11 +41,9 @@ class SvnCommandPath(svncommon.SvnPathBase):
 
     def _svnwithrev(self, cmd, *args):
         """ execute an svn command, append our own url and revision """
-        if self.rev is None:
-            return self._svnwrite(cmd, *args)
-        else:
+        if self.rev is not None:
             args = ['-r', self.rev] + list(args)
-            return self._svnwrite(cmd, *args)
+        return self._svnwrite(cmd, *args)
 
     def _svnwrite(self, cmd, *args):
         """ execute an svn command, append our own url """
@@ -57,8 +55,7 @@ class SvnCommandPath(svncommon.SvnPathBase):
         string = " ".join(l)
         if DEBUG:
             print("execing %s" % string)
-        out = self._svncmdexecauth(string)
-        return out
+        return self._svncmdexecauth(string)
 
     def _svncmdexecauth(self, cmd):
         """ execute an svn command 'as is' """
@@ -287,23 +284,23 @@ rev_end is the last revision (defaulting to HEAD).
 if verbose is True, then the LogEntry instances also know which files changed.
 """
         assert self.check() #make it simpler for the pipe
-        rev_start = rev_start is None and "HEAD" or rev_start
-        rev_end = rev_end is None and "HEAD" or rev_end
+        rev_start = "HEAD" if rev_start is None else rev_start
+        rev_end = "HEAD" if rev_end is None else rev_end
 
         if rev_start == "HEAD" and rev_end == 1:
             rev_opt = ""
         else:
             rev_opt = "-r %s:%s" % (rev_start, rev_end)
-        verbose_opt = verbose and "-v" or ""
+        verbose_opt = "-v" if verbose else ""
         xmlpipe =  self._svnpopenauth('svn log --xml %s %s "%s"' %
                                       (rev_opt, verbose_opt, self.strpath))
         from xml.dom import minidom
         tree = minidom.parse(xmlpipe)
-        result = []
-        for logentry in filter(None, tree.firstChild.childNodes):
-            if logentry.nodeType == logentry.ELEMENT_NODE:
-                result.append(svncommon.LogEntry(logentry))
-        return result
+        return [
+            svncommon.LogEntry(logentry)
+            for logentry in filter(None, tree.firstChild.childNodes)
+            if logentry.nodeType == logentry.ELEMENT_NODE
+        ]
 
 #01234567890123456789012345678901234567890123467
 #   2256      hpk        165 Nov 24 17:55 __init__.py

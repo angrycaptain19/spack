@@ -15,7 +15,7 @@ class URIDict(MutableMapping):
         return urlsplit(uri).geturl()
 
     def __init__(self, *args, **kwargs):
-        self.store = dict()
+        self.store = {}
         self.store.update(*args, **kwargs)
 
     def __getitem__(self, uri):
@@ -94,9 +94,9 @@ def find_additional_properties(instance, schema):
     properties = schema.get("properties", {})
     patterns = "|".join(schema.get("patternProperties", {}))
     for property in instance:
-        if property not in properties:
-            if patterns and re.search(patterns, property):
-                continue
+        if property not in properties and (
+            not patterns or not re.search(patterns, property)
+        ):
             yield property
 
 
@@ -105,10 +105,7 @@ def extras_msg(extras):
     Create an error message for extra items or properties.
     """
 
-    if len(extras) == 1:
-        verb = "was"
-    else:
-        verb = "were"
+    verb = "was" if len(extras) == 1 else "were"
     return ", ".join(repr(extra) for extra in extras), verb
 
 
@@ -160,9 +157,7 @@ def ensure_list(thing):
     Otherwise, return it unchanged.
     """
 
-    if isinstance(thing, str_types):
-        return [thing]
-    return thing
+    return [thing] if isinstance(thing, str_types) else thing
 
 
 def equal(one, two):
@@ -194,7 +189,7 @@ def uniq(container):
     """
 
     try:
-        return len(set(unbool(i) for i in container)) == len(container)
+        return len({unbool(i) for i in container}) == len(container)
     except TypeError:
         try:
             sort = sorted(unbool(i) for i in container)

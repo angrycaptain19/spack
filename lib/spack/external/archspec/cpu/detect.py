@@ -287,8 +287,8 @@ def compatibility_check_for_x86_64(info, target):
     # vendor, and we have all of its features
     arch_root = TARGETS[basename]
     return (
-        (target == arch_root or arch_root in target.ancestors)
-        and (target.vendor == vendor or target.vendor == "generic")
+        ((target == arch_root or arch_root in target.ancestors))
+        and target.vendor in [vendor, "generic"]
         and target.features.issubset(features)
     )
 
@@ -302,8 +302,8 @@ def compatibility_check_for_aarch64(info, target):
 
     arch_root = TARGETS[basename]
     return (
-        (target == arch_root or arch_root in target.ancestors)
-        and (target.vendor == vendor or target.vendor == "generic")
+        ((target == arch_root or arch_root in target.ancestors))
+        and target.vendor in [vendor, "generic"]
         and target.features.issubset(features)
     )
 
@@ -315,12 +315,7 @@ def compatibility_check_for_riscv64(info, target):
     uarch = info.get("uarch")
 
     # sifive unmatched board
-    if uarch == "sifive,u74-mc":
-        uarch = "u74mc"
-    # catch-all for unknown uarchs
-    else:
-        uarch = "riscv64"
-
+    uarch = "u74mc" if uarch == "sifive,u74-mc" else "riscv64"
     arch_root = TARGETS[basename]
     return (target == arch_root or arch_root in target.ancestors) and (
         target == uarch or target.vendor == "generic"

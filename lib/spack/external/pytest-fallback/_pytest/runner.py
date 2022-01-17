@@ -285,27 +285,28 @@ def pytest_runtest_makereport(item, call):
     duration = call.stop - call.start
     keywords = dict([(x, 1) for x in item.keywords])
     excinfo = call.excinfo
-    sections = []
     if not call.excinfo:
         outcome = "passed"
         longrepr = None
+    elif not isinstance(excinfo, ExceptionInfo):
+        outcome = "failed"
+        longrepr = excinfo
+    elif excinfo.errisinstance(skip.Exception):
+        outcome = "skipped"
+        r = excinfo._getreprcrash()
+        longrepr = (str(r.path), r.lineno, r.message)
     else:
-        if not isinstance(excinfo, ExceptionInfo):
-            outcome = "failed"
-            longrepr = excinfo
-        elif excinfo.errisinstance(skip.Exception):
-            outcome = "skipped"
-            r = excinfo._getreprcrash()
-            longrepr = (str(r.path), r.lineno, r.message)
-        else:
-            outcome = "failed"
-            if call.when == "call":
-                longrepr = item.repr_failure(excinfo)
-            else:  # exception in setup or teardown
-                longrepr = item._repr_failure_py(excinfo,
-                                                 style=item.config.option.tbstyle)
-    for rwhen, key, content in item._report_sections:
-        sections.append(("Captured %s %s" % (key, rwhen), content))
+        outcome = "failed"
+        if call.when == "call":
+            longrepr = item.repr_failure(excinfo)
+        else:  # exception in setup or teardown
+            longrepr = item._repr_failure_py(excinfo,
+                                             style=item.config.option.tbstyle)
+    sections = [
+        ("Captured %s %s" % (key, rwhen), content)
+        for rwhen, key, content in item._report_sections
+    ]
+
     return TestReport(item.nodeid, item.location,
                       keywords, outcome, longrepr, when,
                       sections, duration)

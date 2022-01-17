@@ -58,10 +58,7 @@ _py_ext_re = re.compile(r"\.py$")
 def bin_xml_escape(arg):
     def repl(matchobj):
         i = ord(matchobj.group())
-        if i <= 0xFF:
-            return unicode('#x%02X') % i
-        else:
-            return unicode('#x%04X') % i
+        return unicode('#x%02X') % i if i <= 0xFF else unicode('#x%04X') % i
 
     return py.xml.raw(illegal_xml_re.sub(repl, py.xml.escape(arg)))
 
@@ -413,25 +410,24 @@ class LogXML(object):
         dirname = os.path.dirname(os.path.abspath(self.logfile))
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
-        logfile = open(self.logfile, 'w', encoding='utf-8')
-        suite_stop_time = time.time()
-        suite_time_delta = suite_stop_time - self.suite_start_time
+        with open(self.logfile, 'w', encoding='utf-8') as logfile:
+            suite_stop_time = time.time()
+            suite_time_delta = suite_stop_time - self.suite_start_time
 
-        numtests = (self.stats['passed'] + self.stats['failure'] +
-                    self.stats['skipped'] + self.stats['error'] -
-                    self.cnt_double_fail_tests)
-        logfile.write('<?xml version="1.0" encoding="utf-8"?>')
+            numtests = (self.stats['passed'] + self.stats['failure'] +
+                        self.stats['skipped'] + self.stats['error'] -
+                        self.cnt_double_fail_tests)
+            logfile.write('<?xml version="1.0" encoding="utf-8"?>')
 
-        logfile.write(Junit.testsuite(
-            self._get_global_properties_node(),
-            [x.to_xml() for x in self.node_reporters_ordered],
-            name=self.suite_name,
-            errors=self.stats['error'],
-            failures=self.stats['failure'],
-            skips=self.stats['skipped'],
-            tests=numtests,
-            time="%.3f" % suite_time_delta, ).unicode(indent=0))
-        logfile.close()
+            logfile.write(Junit.testsuite(
+                self._get_global_properties_node(),
+                [x.to_xml() for x in self.node_reporters_ordered],
+                name=self.suite_name,
+                errors=self.stats['error'],
+                failures=self.stats['failure'],
+                skips=self.stats['skipped'],
+                tests=numtests,
+                time="%.3f" % suite_time_delta, ).unicode(indent=0))
 
     def pytest_terminal_summary(self, terminalreporter):
         terminalreporter.write_sep("-",
